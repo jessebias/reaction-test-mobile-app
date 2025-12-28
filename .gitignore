@@ -1,0 +1,32 @@
+# Sync with Expo
+# @generated expo-cli
+expo-env.d.ts
+# @end expo-cli
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Local files
+.env
+.env*.local
+*.log
+
+# Editor & OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MacOS
+__MACOSX/
+
+# Backup
+app-example/
