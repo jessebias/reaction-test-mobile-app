@@ -2,9 +2,11 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Intro from '../components/Intro';
+import Leaderboard from '../components/Leaderboard';
+import { submitScore } from '../lib/leaderboard';
 
 type GameState = 'idle' | 'waiting' | 'go' | 'fail' | 'result';
 
@@ -21,6 +23,7 @@ const TITLE_SIZE = width * 0.14;
 
 export default function ReactionGame() {
     const [showIntro, setShowIntro] = useState(true);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [gameState, setGameState] = useState<GameState>('idle');
     const [resultMs, setResultMs] = useState<number>(0);
     const [timerId, setTimerId] = useState<NodeJS.Timeout | number | null>(null);
@@ -118,43 +121,89 @@ export default function ReactionGame() {
         }
     };
 
+    const handleSubmitScore = async () => {
+        try {
+            await submitScore(resultMs, 'TEST_WALLET', 'TEST_SIG');
+            setShowLeaderboard(true);
+        } catch (error: any) {
+            console.error(error);
+            alert(`Failed: ${error.message || JSON.stringify(error)}`);
+        }
+    };
+
     return (
-        <Pressable style={styles.container} onPress={handlePress}>
+        <View style={styles.container}>
             <StatusBar style={gameState === 'go' ? 'dark' : 'light'} />
-            <LinearGradient
-                colors={getGradientColors()}
-                style={styles.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            >
-                <View style={styles.center}>
-                    <Text style={[styles.h1, { color: getTextColor() }]}>{getTitle()}</Text>
-                    <Text style={[styles.p, { color: getTextColor() }]}>{getSubtitle()}</Text>
 
-                    {gameState === 'result' && (
-                        <Animated.Text
-                            entering={FadeIn.delay(200).duration(600)}
-                            style={styles.restartText}
-                        >
-                            TAP TO RETRY
-                        </Animated.Text>
+            {/* Main Game Touch Area */}
+            <Pressable style={StyleSheet.absoluteFill} onPress={handlePress}>
+                <LinearGradient
+                    colors={getGradientColors()}
+                    style={styles.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                >
+                    <View style={styles.center}>
+                        <Text style={[styles.h1, { color: getTextColor() }]}>{getTitle()}</Text>
+                        <Text style={[styles.p, { color: getTextColor() }]}>{getSubtitle()}</Text>
+
+                        {gameState === 'result' && (
+                            <View style={{ alignItems: 'center' }}>
+                                <Animated.Text
+                                    entering={FadeIn.delay(200).duration(600)}
+                                    style={styles.restartText}
+                                >
+                                    TAP TO RETRY
+                                </Animated.Text>
+
+                                {/* Submit Score Button - Needs to stop propagation if pressing specific button */}
+                            </View>
+                        )}
+                    </View>
+
+                    {gameState === 'idle' && (
+                        <View style={styles.brandingContainer}>
+                            <LinearGradient
+                                colors={[SOLANA_PURPLE, SOLANA_GREEN]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.brandingBar}
+                            />
+                        </View>
                     )}
-                </View>
+                </LinearGradient>
+            </Pressable>
 
+            {/* UI Overlays (Buttons) */}
+            <SafeAreaView pointerEvents="box-none" style={styles.overlayContainer}>
                 {gameState === 'idle' && (
-                    <View style={styles.brandingContainer}>
-                        <LinearGradient
-                            colors={[SOLANA_PURPLE, SOLANA_GREEN]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.brandingBar}
-                        />
+                    <TouchableOpacity
+                        style={styles.leaderboardBtn}
+                        onPress={() => setShowLeaderboard(true)}
+                    >
+                        <Text style={styles.leaderboardBtnText}>🏆 LEADERBOARD</Text>
+                    </TouchableOpacity>
+                )}
+
+                {gameState === 'result' && (
+                    <View style={styles.bottomActions} pointerEvents="box-none">
+                        <TouchableOpacity
+                            style={styles.submitBtn}
+                            onPress={handleSubmitScore}
+                        >
+                            <Text style={styles.submitBtnText}>SUBMIT SCORE</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
-            </LinearGradient>
+            </SafeAreaView>
 
             {showIntro && <Intro onFinish={() => setShowIntro(false)} />}
-        </Pressable>
+
+            <Leaderboard
+                visible={showLeaderboard}
+                onClose={() => setShowLeaderboard(false)}
+            />
+        </View>
     );
 }
 
@@ -207,5 +256,47 @@ const styles = StyleSheet.create({
         width: 60,
         height: 4,
         borderRadius: 2,
+    },
+    // Overlay styles
+    overlayContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'space-between',
+        padding: 20,
+    },
+    leaderboardBtn: {
+        alignSelf: 'flex-end',
+        padding: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 20,
+        marginTop: 10,
+    },
+    leaderboardBtnText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 12,
+        letterSpacing: 1,
+    },
+    bottomActions: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        marginBottom: 80, // Space specifically for the button in result screen
+    },
+    submitBtn: {
+        backgroundColor: 'white',
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        borderRadius: 30,
+        shadowColor: 'black',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    submitBtnText: {
+        color: 'black',
+        fontWeight: '900',
+        fontSize: 16,
+        letterSpacing: 1,
     },
 });
