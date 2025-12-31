@@ -1,13 +1,15 @@
 import { supabase } from './supabase';
 
 export interface Score {
-    id: string; // uuid
+    id: string;
     time_ms: number;
     wallet_address?: string;
     created_at: string;
-    // We can compute rank on the client for now or use a window function if we get fancy later
 }
 
+/**
+ * Fetches the top 50 scores from Supabase.
+ */
 export const fetchLeaderboard = async (): Promise<Score[]> => {
     const { data, error } = await supabase
         .from('scores')
@@ -23,6 +25,9 @@ export const fetchLeaderboard = async (): Promise<Score[]> => {
     return data || [];
 };
 
+/**
+ * Submits a new score with the verified wallet address and transaction signature.
+ */
 export const submitScore = async (
     timeMs: number,
     walletAddress: string,

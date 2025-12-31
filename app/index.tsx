@@ -7,6 +7,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import Intro from '../components/Intro';
 import Leaderboard from '../components/Leaderboard';
 import { submitScore } from '../lib/leaderboard';
+import { requestPayment } from '../lib/solana';
 
 type GameState = 'idle' | 'waiting' | 'go' | 'fail' | 'result';
 
@@ -121,13 +122,26 @@ export default function ReactionGame() {
         }
     };
 
+    const [paymentProcessing, setPaymentProcessing] = useState(false);
+
     const handleSubmitScore = async () => {
+        if (paymentProcessing) return;
+        setPaymentProcessing(true);
         try {
-            await submitScore(resultMs, 'TEST_WALLET', 'TEST_SIG');
-            setShowLeaderboard(true);
+            // Request Payment & Verify on-chain
+            const result = await requestPayment();
+
+            if (result.verified) {
+                // Submit proven score to Leaderboard
+                await submitScore(resultMs, result.wallet, result.signature);
+                setShowLeaderboard(true);
+            }
         } catch (error: any) {
             console.error(error);
-            alert(`Failed: ${error.message || JSON.stringify(error)}`);
+            // Inform user of failure
+            alert("Payment failed or timed out. Please try again.");
+        } finally {
+            setPaymentProcessing(false);
         }
     };
 
@@ -188,10 +202,13 @@ export default function ReactionGame() {
                 {gameState === 'result' && (
                     <View style={styles.bottomActions} pointerEvents="box-none">
                         <TouchableOpacity
-                            style={styles.submitBtn}
+                            style={[styles.submitBtn, paymentProcessing && { opacity: 0.5 }]}
                             onPress={handleSubmitScore}
+                            disabled={paymentProcessing}
                         >
-                            <Text style={styles.submitBtnText}>SUBMIT SCORE</Text>
+                            <Text style={styles.submitBtnText}>
+                                {paymentProcessing ? "VERIFYING..." : "SUBMIT SCORE"}
+                            </Text>
                         </TouchableOpacity>
                         <Text style={styles.disclaimerText}>
                             Submitting a score requires a small on-chain verification to keep the leaderboard clean.
