@@ -215,7 +215,7 @@ export default function SpeedRunGame() {
                             <Text style={styles.resultLabel}>LONGEST STREAK</Text>
                             <Text style={styles.resultScore}>{streak}</Text>
 
-                            <Text style={styles.restartText}>TAP TO RETRY</Text>
+                            <Animated.Text style={[styles.restartText, animatedPulseStyle]}>TAP TO RETRY</Animated.Text>
                         </View>
                     </Pressable>
                 )}

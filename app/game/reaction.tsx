@@ -205,7 +205,7 @@ export default function ReactionGame() {
                             <View style={{ alignItems: 'center' }}>
                                 <Animated.Text
                                     entering={FadeIn.delay(200).duration(600)}
-                                    style={styles.restartText}
+                                    style={[styles.restartText, animatedPulseStyle]}
                                 >
                                     TAP TO RETRY
                                 </Animated.Text>

@@ -236,7 +236,7 @@ export default function MultiZoneGame() {
                             <Text style={styles.resultLabel}>AVERAGE REACTION</Text>
                             <Text style={styles.resultScore}>{getAverageTime()}ms</Text>
 
-                            <Text style={styles.restartText}>TAP TO RETRY</Text>
+                            <Animated.Text style={[styles.restartText, animatedPulseStyle]}>TAP TO RETRY</Animated.Text>
                         </View>
                     </Pressable>
                 )}

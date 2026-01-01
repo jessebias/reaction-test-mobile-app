@@ -49,6 +49,7 @@ export const submitScore = async (
     gameMode: string = 'reaction_test',
     score: number = 0
 ) => {
+    console.log(`[Leaderboard] Submitting score... Mode: ${gameMode}, Score: ${score}, Time: ${timeMs}`);
     const { data, error } = await supabase
         .from('scores')
         .insert([
@@ -63,9 +64,10 @@ export const submitScore = async (
         .select();
 
     if (error) {
-        console.error('Error submitting score:', error);
+        console.error('[Leaderboard] Supabase Error:', error);
         throw error;
     }
 
+    console.log('[Leaderboard] Score submitted successfully:', data);
     return data;
 };

@@ -6,12 +6,12 @@ import {
     FlatList,
     Modal,
     Platform,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Score as ApiScore, fetchLeaderboard } from '../lib/leaderboard';
 
 // Colors matches app/index.tsx
