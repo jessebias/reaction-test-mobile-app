@@ -10,36 +10,38 @@ import { submitScore } from '../../lib/leaderboard';
 import { requestPayment } from '../../lib/solana';
 
 // Game Constants
-const TOTAL_ROUNDS = 10;
-const TIMEOUT_MS = 1500;
-const PENALTY_WRONG_TAP = 150;
-const PENALTY_TIMEOUT = 300;
-const ZONES_COUNT = 4; // 2x2 Grid
+const INITIAL_DURATION = 1200; // Start with 1.2 seconds to tap
+const MIN_DURATION = 350; // Cap speed at 350ms (extremely fast)
+const SPEED_INCREMENT = 80; // Milliseconds faster per tap
+const TARGET_SIZE = 80;
 
 // Colors
 const DARK_BG = '#000000';
-const ZONE_INACTIVE = '#1A1A1D';
 const ZONE_ACTIVE = '#14F195'; // Solana Green
-const ZONE_ERROR = '#FF3B30';
+const ZONE_FAIL = '#FF3B30';
 const SOLANA_PURPLE = '#9945FF';
 
-const { width } = Dimensions.get('window');
-const ZONE_SIZE = (width - 60) / 2;
+const { width, height } = Dimensions.get('window');
+// Calculate safe bounds for random placement (avoiding header/footer)
+const MIN_Y = 150;
+const MAX_Y = height - 200;
+const MIN_X = 20;
+const MAX_X = width - TARGET_SIZE - 20;
 
 type GameState = 'intro' | 'playing' | 'result';
 
-export default function MultiZoneGame() {
+export default function SpeedRunGame() {
     const router = useRouter();
     const [gameState, setGameState] = useState<GameState>('intro');
-    const [round, setRound] = useState(0);
-    const [activeZone, setActiveZone] = useState<number | null>(null);
-    const [accumulatedMs, setAccumulatedMs] = useState(0);
-    const [roundPenalties, setRoundPenalties] = useState(0);
+    const [streak, setStreak] = useState(0);
+    const [currentDuration, setCurrentDuration] = useState(INITIAL_DURATION);
+
+    // Target Position
+    const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
 
     // Timer refs
-    const roundStartRef = useRef<number>(0);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const nextRoundTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<number | null>(null);
+    const gameStartRef = useRef<number>(0); // To track total survival time if needed
 
     // Animation for "Tap Prompt"
     const pulseOpacity = useSharedValue(1);
@@ -65,93 +67,65 @@ export default function MultiZoneGame() {
 
     // Cleanup on unmount
     useEffect(() => {
-        return () => {
-            clearTimers();
-        };
+        return () => stopGame();
     }, []);
 
-    const clearTimers = () => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        if (nextRoundTimerRef.current) clearTimeout(nextRoundTimerRef.current);
+    const stopGame = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
     };
 
     const startGame = () => {
         setGameState('playing');
-        setRound(0);
-        setAccumulatedMs(0);
-        setRoundPenalties(0);
-        startNextRound(1);
+        setStreak(0);
+        setCurrentDuration(INITIAL_DURATION);
+        gameStartRef.current = Date.now();
+        spawnTarget(INITIAL_DURATION);
     };
 
-    const startNextRound = (nextRoundNum: number) => {
-        setRound(nextRoundNum);
-        setActiveZone(null);
-        setRoundPenalties(0);
+    const spawnTarget = (duration: number) => {
+        // Stop previous timer
+        if (timerRef.current) clearTimeout(timerRef.current);
 
-        // Random delay before activation (500ms - 2500ms)
-        const delay = 500 + Math.random() * 2000;
+        // Randomize position
+        const x = Math.floor(Math.random() * (MAX_X - MIN_X + 1)) + MIN_X;
+        const y = Math.floor(Math.random() * (MAX_Y - MIN_Y + 1)) + MIN_Y;
+        setTargetPos({ x, y });
 
-        nextRoundTimerRef.current = setTimeout(() => {
-            activateZone();
-        }, delay) as unknown as NodeJS.Timeout;
-    };
-
-    const activateZone = () => {
-        const nextZone = Math.floor(Math.random() * ZONES_COUNT);
-        setActiveZone(nextZone);
-        roundStartRef.current = performance.now();
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-        // Set Timeout Limit
-        timeoutRef.current = setTimeout(() => {
+        // Start Timer for this round using the PASSED duration (sync)
+        timerRef.current = setTimeout(() => {
             handleTimeout();
-        }, TIMEOUT_MS) as unknown as NodeJS.Timeout;
+        }, duration) as unknown as number;
     };
 
     const handleTimeout = () => {
-        // Round failed (timeout)
-        finishRound(TIMEOUT_MS + PENALTY_TIMEOUT);
+        // Target disappeared before tap -> Game Over
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setGameState('result');
     };
 
-    const handleZonePress = (index: number) => {
-        if (activeZone === null) return; // Ignore if no zone is active
+    const handleTap = () => {
+        if (gameState !== 'playing') return;
 
-        if (index === activeZone) {
-            // Correct Tap
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            const rawTime = performance.now() - roundStartRef.current;
-            const roundTotal = rawTime + roundPenalties;
+        // Success!
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        const newStreak = streak + 1;
+        setStreak(newStreak);
 
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            finishRound(roundTotal);
-        } else {
-            // Wrong Tap
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            setRoundPenalties(p => p + PENALTY_WRONG_TAP);
-            // Visual feedback could go here (flash red)
-        }
+        // Calculate new duration (Exponential Decay for smooth flow)
+        // 5% faster each tap feels much fairer than linear subtraction
+        const nextDuration = Math.max(MIN_DURATION, Math.floor(currentDuration * 0.95));
+        setCurrentDuration(nextDuration);
+
+        // Respawn immediately with NEW duration
+        spawnTarget(nextDuration);
     };
 
-    const finishRound = (ms: number) => {
-        setAccumulatedMs(prev => prev + ms);
-        setActiveZone(null);
-
-        if (round >= TOTAL_ROUNDS) {
-            endGame(ms); // Pass last round ms just to be safe, but mostly we rely on accumulatedMs update which is async... 
-            // Better to calculate final score here
-            setGameState('result');
-        } else {
-            startNextRound(round + 1);
-        }
-    };
-
-    const getAverageTime = () => {
-        return Math.round(accumulatedMs / TOTAL_ROUNDS);
-    };
-
-    const endGame = (lastRoundMs: number) => {
-        // Logic handled in render mostly
+    const handleBackgroundTap = () => {
+        if (gameState !== 'playing') return;
+        // Missed the target -> Game Over
+        stopGame();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setGameState('result');
     };
 
     const handleSubmitScore = async () => {
@@ -160,7 +134,7 @@ export default function MultiZoneGame() {
         try {
             const result = await requestPayment();
             if (result.verified) {
-                await submitScore(getAverageTime(), result.wallet, result.signature, 'multi_zone');
+                await submitScore(0, result.wallet, result.signature, 'progressive_speed', streak);
                 setShowLeaderboard(true);
             }
         } catch (error) {
@@ -171,70 +145,75 @@ export default function MultiZoneGame() {
         }
     };
 
-    // Render Helpers
-    const renderGrid = () => (
-        <View style={styles.grid}>
-            {Array.from({ length: ZONES_COUNT }).map((_, index) => {
-                const isActive = activeZone === index;
-                return (
-                    <Pressable
-                        key={index}
-                        style={[
-                            styles.zone,
-                            { backgroundColor: isActive ? ZONE_ACTIVE : ZONE_INACTIVE },
-                            isActive && styles.zoneActive
-                        ]}
-                        onPressIn={() => handleZonePress(index)}
-                    >
-                        {/* Inner glow or dot? */}
-                    </Pressable>
-                );
-            })}
-        </View>
-    );
-
     return (
         <View style={styles.container}>
             <StatusBar style="light" />
 
             <SafeAreaView style={styles.safeArea}>
-                {/* Header / HUD */}
+                {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="white" />
                     </TouchableOpacity>
                     {gameState === 'playing' && (
-                        <Text style={styles.hudText}>ROUND {round}/{TOTAL_ROUNDS}</Text>
+                        <View style={styles.hudContainer}>
+                            <Text style={styles.hudLabel}>SPEED</Text>
+                            <Text style={styles.hudValue}>{currentDuration}ms</Text>
+                        </View>
                     )}
                 </View>
 
+                {/* Game Area */}
+                {gameState === 'playing' && (
+                    <View style={styles.gameArea}>
+                        {/* Background Layer: Miss Detection */}
+                        <Pressable
+                            style={styles.backgroundLayer}
+                            onPress={handleBackgroundTap}
+                        />
+
+                        {/* Target Layer: Success Detection */}
+                        <TouchableOpacity
+                            style={[
+                                styles.target,
+                                { left: targetPos.x, top: targetPos.y }
+                            ]}
+                            activeOpacity={0.8}
+                            onPress={handleTap}
+                        >
+                            <View style={styles.innerTarget} />
+                        </TouchableOpacity>
+
+                        {/* Streak Counter (Visual Only) */}
+                        <Text style={styles.bgStreak} pointerEvents="none">
+                            {streak}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Intro Screen */}
                 {gameState === 'intro' && (
                     <Pressable style={styles.fullScreenPressable} onPress={startGame}>
                         <View style={styles.centerContent}>
                             <Text style={styles.mainTitle}>START</Text>
-                            <Text style={styles.subTitle}>MULTI-ZONE</Text>
+                            <Text style={styles.subTitle}>SPEED RUN</Text>
 
                             <View style={styles.introContainer}>
                                 <Animated.Text style={[styles.tapPrompt, animatedPulseStyle]}>TAP ANYWHERE TO START</Animated.Text>
                                 <Text style={styles.instructionText}>
-                                    Tap green zones.{'\n'}10 Rounds.
+                                    Tap the target before it vanishes.{'\n'}It gets faster every time.
                                 </Text>
                             </View>
                         </View>
                     </Pressable>
                 )}
 
-                {gameState === 'playing' && (
-                    <View style={styles.gameContent}>
-                        {renderGrid()}
-                    </View>
-                )}
-
+                {/* Result Screen */}
                 {gameState === 'result' && (
                     <Pressable style={styles.fullScreenPressable} onPress={startGame}>
                         <View style={styles.centerContent}>
-                            <Text style={styles.resultLabel}>AVERAGE REACTION</Text>
-                            <Text style={styles.resultScore}>{getAverageTime()}ms</Text>
+                            <Text style={styles.resultLabel}>LONGEST STREAK</Text>
+                            <Text style={styles.resultScore}>{streak}</Text>
 
                             <Text style={styles.restartText}>TAP TO RETRY</Text>
                         </View>
@@ -242,7 +221,7 @@ export default function MultiZoneGame() {
                 )}
             </SafeAreaView>
 
-            {/* UI Overlays */}
+            {/* UI Overlays (Result Actions) */}
             <SafeAreaView pointerEvents="box-none" style={styles.overlayContainer}>
                 {gameState === 'result' && (
                     <View style={styles.bottomActions} pointerEvents="box-none">
@@ -256,7 +235,7 @@ export default function MultiZoneGame() {
                             </Text>
                         </TouchableOpacity>
                         <Text style={styles.disclaimerText}>
-                            Submitting a score requires a small on-chain verification to keep the leaderboard clean.
+                            Submitting a score requires a small on-chain verification.
                         </Text>
                     </View>
                 )}
@@ -265,7 +244,7 @@ export default function MultiZoneGame() {
             <Leaderboard
                 visible={showLeaderboard}
                 onClose={() => setShowLeaderboard(false)}
-                gameMode="multi_zone"
+                gameMode="progressive_speed"
             />
         </View>
     );
@@ -284,53 +263,77 @@ const styles = StyleSheet.create({
         padding: 20,
         alignItems: 'center',
         justifyContent: 'space-between',
+        zIndex: 20,
     },
     backButton: {
         padding: 8,
         backgroundColor: 'rgba(255,255,255,0.1)',
         borderRadius: 20,
     },
-    hudText: {
+    hudContainer: {
+        alignItems: 'flex-end',
+    },
+    hudLabel: {
         color: '#888',
+        fontSize: 10,
         fontWeight: '700',
-        letterSpacing: 2,
+        letterSpacing: 1,
+    },
+    hudValue: {
+        color: SOLANA_PURPLE,
+        fontSize: 16,
+        fontWeight: '900',
+        fontVariant: ['tabular-nums'],
+    },
+    gameArea: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 10,
+    },
+    backgroundLayer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 1,
+    },
+    target: {
+        position: 'absolute',
+        zIndex: 10, // Ensure target is above background
+        width: TARGET_SIZE,
+        height: TARGET_SIZE,
+        borderRadius: TARGET_SIZE / 2,
+        backgroundColor: 'rgba(255,255,255,0.1)', // Halo
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    innerTarget: {
+        width: TARGET_SIZE - 20,
+        height: TARGET_SIZE - 20,
+        borderRadius: (TARGET_SIZE - 20) / 2,
+        backgroundColor: ZONE_ACTIVE,
+        shadowColor: ZONE_ACTIVE,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 15,
+        elevation: 10,
+    },
+    bgStreak: {
+        position: 'absolute',
+        width: '100%',
+        textAlign: 'center',
+        top: height / 2 - 100,
+        fontSize: 120,
+        fontWeight: '900',
+        color: 'rgba(255,255,255,0.05)',
+        pointerEvents: 'none',
+    },
+    fullScreenPressable: {
+        flex: 1,
+        width: '100%',
+        zIndex: 20,
     },
     centerContent: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-    },
-    gameContent: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        width: width - 40,
-        gap: 10,
-        justifyContent: 'center',
-    },
-    zone: {
-        width: ZONE_SIZE,
-        height: ZONE_SIZE,
-        borderRadius: 24,
-        borderWidth: 2,
-        borderColor: '#333',
-    },
-    zoneActive: {
-        borderColor: 'white',
-        shadowColor: ZONE_ACTIVE,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 20,
-        elevation: 10,
-    },
-    fullScreenPressable: {
-        flex: 1,
-        width: '100%',
     },
     mainTitle: {
         fontSize: width * 0.14,
@@ -342,26 +345,13 @@ const styles = StyleSheet.create({
     },
     subTitle: {
         fontSize: 16,
-        color: '#9945FF', // SOLANA_PURPLE
-        opacity: 1, // Make sure it pops
+        color: '#FF9500', // Orange for Speed
+        opacity: 1,
         letterSpacing: 4,
         marginTop: 16,
         textAlign: 'center',
         fontWeight: '700',
         textTransform: 'uppercase',
-    },
-    ctaBtn: {
-        backgroundColor: 'white',
-        paddingVertical: 16,
-        paddingHorizontal: 40,
-        borderRadius: 30,
-        marginBottom: 20,
-    },
-    ctaText: {
-        color: 'black',
-        fontWeight: '900',
-        fontSize: 16,
-        letterSpacing: 1,
     },
     introContainer: {
         marginTop: 60,
@@ -390,7 +380,7 @@ const styles = StyleSheet.create({
     },
     resultScore: {
         color: ZONE_ACTIVE,
-        fontSize: 64,
+        fontSize: 80,
         fontWeight: '900',
         marginBottom: 50,
     },
@@ -407,7 +397,7 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'space-between',
         padding: 20,
-        zIndex: 10,
+        zIndex: 30,
     },
     bottomActions: {
         flex: 1,

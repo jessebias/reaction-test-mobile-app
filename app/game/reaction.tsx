@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
 import { Dimensions, Pressable, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { submitScore } from '../../lib/leaderboard';
 import { requestPayment } from '../../lib/solana';
 
@@ -28,6 +28,24 @@ export default function ReactionGame() {
     const [resultMs, setResultMs] = useState<number>(0);
     const [timerId, setTimerId] = useState<NodeJS.Timeout | number | null>(null);
     const goTimeRef = useRef<number>(0);
+
+    // Animation for "Tap Prompt"
+    const pulseOpacity = useSharedValue(1);
+
+    React.useEffect(() => {
+        pulseOpacity.value = withRepeat(
+            withSequence(
+                withTiming(0.4, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedPulseStyle = useAnimatedStyle(() => ({
+        opacity: pulseOpacity.value,
+    }));
 
     const getGradientColors = (): [string, string, ...string[]] => {
         switch (gameState) {
@@ -176,7 +194,7 @@ export default function ReactionGame() {
 
                         {gameState === 'idle' && (
                             <View style={styles.introContainer}>
-                                <Text style={styles.tapPrompt}>TAP ANYWHERE TO START</Text>
+                                <Animated.Text style={[styles.tapPrompt, animatedPulseStyle]}>TAP ANYWHERE TO START</Animated.Text>
                                 <Text style={styles.instructionText}>
                                     Wait for green.{'\n'}Tap immediately.
                                 </Text>
@@ -286,8 +304,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         letterSpacing: 2,
         opacity: 0.8,
-        animationName: 'pulse', // Note: React Native style doesn't support keyframe animation like this natively without reanimated, but keeping simple for now. 
-        // We can just rely on opacity.
     },
     instructionText: {
         color: '#888',

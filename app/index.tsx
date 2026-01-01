@@ -80,6 +80,27 @@ export default function GameSelection() {
                                 </View>
                             </LinearGradient>
                         </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.card}
+                            onPress={() => router.push('/game/speed-run')}
+                            activeOpacity={0.8}
+                        >
+                            <LinearGradient
+                                colors={['rgba(255, 149, 0, 0.15)', 'rgba(255, 149, 0, 0.05)']}
+                                style={styles.cardGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                <View style={styles.cardHeader}>
+                                    <Text style={[styles.cardIcon, { color: '#FF9500' }]}>🔥</Text>
+                                    <View>
+                                        <Text style={[styles.cardTitle, { color: '#FF9500' }]}>SPEED RUN</Text>
+                                        <Text style={styles.cardDesc}>Endurance streak challenge</Text>
+                                    </View>
+                                </View>
+                            </LinearGradient>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -92,24 +113,18 @@ export default function GameSelection() {
                         style={styles.brandingBar}
                     />
                 </View>
-            </LinearGradient>
+            </LinearGradient >
 
-            {showIntro && <Intro onFinish={() => setShowIntro(false)} />}
+            {showIntro && <Intro onFinish={() => setShowIntro(false)} />
+            }
 
             <Leaderboard
                 visible={showLeaderboard}
                 onClose={() => setShowLeaderboard(false)}
-                // Default to reaction test or maybe add a "General" mode later?
-                // For now, let's just show reaction_test or maybe make it selectable inside?
-                // Or maybe we hide the specific leaderboard until a game is selected?
-                // The user asked for "Leaderboard only shows up when in reaction test game" as a BUG.
-                // So I will add it here, defaulting to 'reaction_test' is fine for now, 
-                // or we could update Leaderboard component to have tabs. 
-                // Let's stick to 'reaction_test' as default or pass undefined if we want to show all (needs backend support).
-                // Actually, let's just default to 'reaction_test' for now to solve the "missing" issue.
+                // Default to reaction_test for the main menu leaderboard
                 gameMode="reaction_test"
             />
-        </View>
+        </View >
     );
 }
 

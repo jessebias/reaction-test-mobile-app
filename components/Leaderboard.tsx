@@ -26,6 +26,7 @@ interface Score {
     rank: number;
     wallet: string;
     timeMs: number;
+    score?: number; // Streak
     date: string;
 }
 
@@ -55,6 +56,7 @@ export default function Leaderboard({ visible, onClose, gameMode = 'reaction_tes
                 rank: index + 1,
                 wallet: formatWallet(item.wallet_address || 'ANON'),
                 timeMs: item.time_ms,
+                score: item.score,
                 date: new Date(item.created_at).toLocaleDateString(),
             }));
             setScores(mappedScores);
@@ -70,26 +72,32 @@ export default function Leaderboard({ visible, onClose, gameMode = 'reaction_tes
         return `${address.substring(0, 4)}...${address.substring(address.length - 4)}`;
     };
 
-    const renderItem = ({ item }: { item: Score }) => (
-        <View style={styles.row}>
-            <View style={styles.rankCol}>
-                <Text style={[
-                    styles.rankText,
-                    item.rank === 1 && { color: SOLANA_GREEN },
-                    item.rank === 2 && { color: '#EEE' },
-                    item.rank === 3 && { color: '#CCC' },
-                ]}>
-                    #{item.rank}
-                </Text>
+    const renderItem = ({ item }: { item: Score }) => {
+        const isProgressive = gameMode === 'progressive_speed';
+
+        return (
+            <View style={styles.row}>
+                <View style={styles.rankCol}>
+                    <Text style={[
+                        styles.rankText,
+                        item.rank === 1 && { color: SOLANA_GREEN },
+                        item.rank === 2 && { color: '#EEE' },
+                        item.rank === 3 && { color: '#CCC' },
+                    ]}>
+                        #{item.rank}
+                    </Text>
+                </View>
+                <View style={styles.walletCol}>
+                    <Text style={styles.walletText}>{item.wallet}</Text>
+                </View>
+                <View style={styles.timeCol}>
+                    <Text style={styles.timeText}>
+                        {isProgressive ? `${item.score ?? 0}` : `${item.timeMs}ms`}
+                    </Text>
+                </View>
             </View>
-            <View style={styles.walletCol}>
-                <Text style={styles.walletText}>{item.wallet}</Text>
-            </View>
-            <View style={styles.timeCol}>
-                <Text style={styles.timeText}>{item.timeMs}ms</Text>
-            </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <Modal
@@ -117,7 +125,9 @@ export default function Leaderboard({ visible, onClose, gameMode = 'reaction_tes
                         <View style={styles.tableHeader}>
                             <Text style={[styles.headerText, styles.rankCol]}>RANK</Text>
                             <Text style={[styles.headerText, styles.walletCol]}>PLAYER</Text>
-                            <Text style={[styles.headerText, styles.timeCol]}>TIME</Text>
+                            <Text style={[styles.headerText, styles.timeCol]}>
+                                {gameMode === 'progressive_speed' ? 'STREAK' : 'TIME'}
+                            </Text>
                         </View>
 
                         {/* List */}
