@@ -39,17 +39,26 @@ interface LeaderboardProps {
 export default function Leaderboard({ visible, onClose, gameMode = 'reaction_test' }: LeaderboardProps) {
     const [scores, setScores] = useState<Score[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeMode, setActiveMode] = useState(gameMode);
 
+    // Sync state with prop when opening
+    useEffect(() => {
+        if (visible) {
+            setActiveMode(gameMode);
+        }
+    }, [visible, gameMode]);
+
+    // Fetch when activeMode changes
     useEffect(() => {
         if (visible) {
             loadLeaderboard();
         }
-    }, [visible, gameMode]);
+    }, [visible, activeMode]);
 
     const loadLeaderboard = async () => {
         setLoading(true);
         try {
-            const data = await fetchLeaderboard(gameMode);
+            const data = await fetchLeaderboard(activeMode);
             // Map API data to UI data
             const mappedScores: Score[] = data.map((item: ApiScore, index: number) => ({
                 id: item.id,
@@ -73,7 +82,7 @@ export default function Leaderboard({ visible, onClose, gameMode = 'reaction_tes
     };
 
     const renderItem = ({ item }: { item: Score }) => {
-        const isProgressive = gameMode === 'progressive_speed';
+        const isProgressive = activeMode === 'progressive_speed';
 
         return (
             <View style={styles.row}>
@@ -121,12 +130,36 @@ export default function Leaderboard({ visible, onClose, gameMode = 'reaction_tes
                             </TouchableOpacity>
                         </View>
 
+                        {/* Tabs */}
+                        <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                                style={[styles.tabButton, activeMode === 'reaction_test' && styles.activeTab]}
+                                onPress={() => setActiveMode('reaction_test')}
+                            >
+                                <Text style={[styles.tabText, activeMode === 'reaction_test' && styles.activeTabText]}>REACTION</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.tabButton, activeMode === 'progressive_speed' && styles.activeTab]}
+                                onPress={() => setActiveMode('progressive_speed')}
+                            >
+                                <Text style={[styles.tabText, activeMode === 'progressive_speed' && styles.activeTabText]}>SPEED</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.tabButton, activeMode === 'multi_zone' && styles.activeTab]}
+                                onPress={() => setActiveMode('multi_zone')}
+                            >
+                                <Text style={[styles.tabText, activeMode === 'multi_zone' && styles.activeTabText]}>ZONES</Text>
+                            </TouchableOpacity>
+                        </View>
+
                         {/* Column Headers */}
                         <View style={styles.tableHeader}>
                             <Text style={[styles.headerText, styles.rankCol]}>RANK</Text>
                             <Text style={[styles.headerText, styles.walletCol]}>PLAYER</Text>
                             <Text style={[styles.headerText, styles.timeCol]}>
-                                {gameMode === 'progressive_speed' ? 'STREAK' : 'TIME'}
+                                {activeMode === 'progressive_speed' ? 'STREAK' : 'TIME'}
                             </Text>
                         </View>
 
@@ -189,6 +222,33 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 14,
     },
+    // Tabs
+    tabContainer: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#222',
+        marginBottom: 8,
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 14,
+        alignItems: 'center',
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    activeTab: {
+        borderBottomColor: SOLANA_GREEN,
+    },
+    tabText: {
+        color: '#666',
+        fontWeight: '700',
+        fontSize: 12,
+        letterSpacing: 1,
+    },
+    activeTabText: {
+        color: 'white',
+    },
+    // Table
     tableHeader: {
         flexDirection: 'row',
         paddingHorizontal: 20,
@@ -248,6 +308,7 @@ const styles = StyleSheet.create({
         color: '#BBB',
         fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
         fontSize: 14,
+        fontWeight: '500',
     },
     timeText: {
         color: SOLANA_GREEN,
