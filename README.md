@@ -4,8 +4,11 @@
 
 Designed for simplicity, speed, and competition, SolTap puts your skills to the ultimate test. Tap the moment the screen changes color and see your reactions measured down to the millisecond.
 
-<img src="screenshots/home.png" alt="SolTap App Preview" width="300" />
-*(Note: Add more screenshots to the `screenshots/` folder to showcase game modes like `reaction.png`, `multi.png`, etc.)*
+<p align="center">
+  <img src="screenshots/splash.png" alt="Splash Screen" width="260" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="screenshots/home.png" alt="Home Screen" width="260" />
+</p>
 
 ## 🎮 Game Modes
 
