@@ -35,7 +35,6 @@ export default function GameSelection() {
             />
 
             <SafeAreaView style={styles.safeArea}>
-                {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity
                         style={styles.iconButton}
@@ -60,7 +59,6 @@ export default function GameSelection() {
                         <Text style={styles.subtitle}>TRAIN TO EARN</Text>
                     </View>
 
-                    {/* Reaction Test Card */}
                     <TouchableOpacity
                         style={[styles.card, styles.cardGreenBorder]}
                         onPress={() => router.push('/game/reaction')}
@@ -87,7 +85,6 @@ export default function GameSelection() {
                         </LinearGradient>
                     </TouchableOpacity>
 
-                    {/* Multi-Zone Card */}
                     <TouchableOpacity
                         style={[styles.card, styles.cardPurpleBorder]}
                         onPress={() => router.push('/game/multi-zone')}
@@ -114,7 +111,6 @@ export default function GameSelection() {
                         </LinearGradient>
                     </TouchableOpacity>
 
-                    {/* Speed Run Card */}
                     <TouchableOpacity
                         style={[styles.card, styles.cardWhiteBorder]}
                         onPress={() => router.push('/game/speed-run')}
@@ -143,7 +139,6 @@ export default function GameSelection() {
                 </ScrollView>
             </SafeAreaView>
 
-            {/* Branding Footer */}
             <View style={styles.brandingContainer}>
                 <LinearGradient
                     colors={[SOLANA_PURPLE, SOLANA_GREEN]}

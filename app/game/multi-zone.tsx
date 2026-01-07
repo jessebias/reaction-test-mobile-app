@@ -10,18 +10,16 @@ import Leaderboard from '../../components/Leaderboard';
 import { submitScore } from '../../lib/leaderboard';
 import { requestPayment } from '../../lib/solana';
 
-// Game Constants
 const TOTAL_ROUNDS = 10;
 const TIMEOUT_MS = 1500;
 const PENALTY_WRONG_TAP = 150;
 const PENALTY_TIMEOUT = 300;
-const ZONES_COUNT = 4; // 2x2 Grid
+const ZONES_COUNT = 4;
 
-// Colors
 const DARK_BG = '#000000';
 const DEEP_BG = '#101012';
 const ZONE_INACTIVE = '#1A1A1D';
-const ZONE_ACTIVE = '#14F195'; // Solana Green
+const ZONE_ACTIVE = '#14F195';
 const ZONE_ERROR = '#FF3B30';
 const SOLANA_PURPLE = '#9945FF';
 
@@ -38,12 +36,10 @@ export default function MultiZoneGame() {
     const [accumulatedMs, setAccumulatedMs] = useState(0);
     const [roundPenalties, setRoundPenalties] = useState(0);
 
-    // Timer refs
     const roundStartRef = useRef<number>(0);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const nextRoundTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Animation for "Tap Prompt"
     const pulseOpacity = useSharedValue(1);
 
     React.useEffect(() => {
@@ -61,11 +57,9 @@ export default function MultiZoneGame() {
         opacity: pulseOpacity.value,
     }));
 
-    // Leaderboard State
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [paymentProcessing, setPaymentProcessing] = useState(false);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             clearTimers();
@@ -90,7 +84,6 @@ export default function MultiZoneGame() {
         setActiveZone(null);
         setRoundPenalties(0);
 
-        // Random delay before activation (500ms - 2500ms)
         const delay = 500 + Math.random() * 2000;
 
         nextRoundTimerRef.current = setTimeout(() => {
@@ -104,23 +97,20 @@ export default function MultiZoneGame() {
         roundStartRef.current = performance.now();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        // Set Timeout Limit
         timeoutRef.current = setTimeout(() => {
             handleTimeout();
         }, TIMEOUT_MS) as unknown as NodeJS.Timeout;
     };
 
     const handleTimeout = () => {
-        // Round failed (timeout)
         finishRound(TIMEOUT_MS + PENALTY_TIMEOUT);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     };
 
     const handleZonePress = (index: number) => {
-        if (activeZone === null) return; // Ignore if no zone is active
+        if (activeZone === null) return;
 
         if (index === activeZone) {
-            // Correct Tap
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             const rawTime = performance.now() - roundStartRef.current;
             const roundTotal = rawTime + roundPenalties;
@@ -128,10 +118,8 @@ export default function MultiZoneGame() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             finishRound(roundTotal);
         } else {
-            // Wrong Tap
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             setRoundPenalties(p => p + PENALTY_WRONG_TAP);
-            // Visual feedback could go here (flash red)
         }
     };
 
@@ -140,8 +128,7 @@ export default function MultiZoneGame() {
         setActiveZone(null);
 
         if (round >= TOTAL_ROUNDS) {
-            endGame(ms); // Pass last round ms just to be safe, but mostly we rely on accumulatedMs update which is async... 
-            // Better to calculate final score here
+            endGame(ms);
             setGameState('result');
         } else {
             startNextRound(round + 1);
@@ -153,7 +140,6 @@ export default function MultiZoneGame() {
     };
 
     const endGame = (lastRoundMs: number) => {
-        // Logic handled in render mostly
     };
 
     const handleSubmitScore = async () => {
@@ -173,7 +159,6 @@ export default function MultiZoneGame() {
         }
     };
 
-    // Render Helpers
     const renderGrid = () => (
         <View style={styles.grid}>
             {Array.from({ length: ZONES_COUNT }).map((_, index) => {
@@ -188,7 +173,6 @@ export default function MultiZoneGame() {
                         ]}
                         onPressIn={() => handleZonePress(index)}
                     >
-                        {/* Inner glow or dot? */}
                     </Pressable>
                 );
             })}
@@ -218,7 +202,6 @@ export default function MultiZoneGame() {
             <StatusBar style="light" />
 
             <SafeAreaView style={styles.safeArea}>
-                {/* Header / HUD */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="white" />
@@ -262,7 +245,6 @@ export default function MultiZoneGame() {
                 )}
             </SafeAreaView>
 
-            {/* UI Overlays */}
             <SafeAreaView pointerEvents="box-none" style={styles.overlayContainer}>
                 {gameState === 'result' && (
                     <View style={styles.bottomActions} pointerEvents="box-none">

@@ -3,25 +3,18 @@ import { supabase } from './supabase';
 export interface Score {
     id: string;
     time_ms: number;
-    score?: number; // For streak-based games
+    score?: number;
     wallet_address?: string;
     created_at: string;
     game_mode?: string;
 }
 
-/**
- * Fetches the top 50 scores from Supabase for a specific game mode.
- * Handles sorting logic:
- * - Reaction/Multi-Zone: Low Time (ASC)
- * - Progressive Speed: High Score (DESC)
- */
 export const fetchLeaderboard = async (gameMode: string = 'reaction_test'): Promise<Score[]> => {
     let query = supabase
         .from('scores')
         .select('*')
         .eq('game_mode', gameMode);
 
-    // Dynamic Sorting based on Game Mode
     if (gameMode === 'progressive_speed') {
         query = query.order('score', { ascending: false });
     } else {
@@ -38,10 +31,6 @@ export const fetchLeaderboard = async (gameMode: string = 'reaction_test'): Prom
     return data || [];
 };
 
-/**
- * Submits a new score with the verified wallet address and transaction signature.
- * Accepts optional 'score' for streak-based games.
- */
 export const submitScore = async (
     timeMs: number,
     walletAddress: string,
@@ -49,13 +38,12 @@ export const submitScore = async (
     gameMode: string = 'reaction_test',
     score: number = 0
 ) => {
-    console.log(`[Leaderboard] Submitting score... Mode: ${gameMode}, Score: ${score}, Time: ${timeMs}`);
     const { data, error } = await supabase
         .from('scores')
         .insert([
             {
                 time_ms: timeMs,
-                score: score, // Store streak here
+                score: score,
                 wallet_address: walletAddress,
                 tx_signature: txSignature,
                 game_mode: gameMode,
@@ -68,6 +56,5 @@ export const submitScore = async (
         throw error;
     }
 
-    console.log('[Leaderboard] Score submitted successfully:', data);
     return data;
 };

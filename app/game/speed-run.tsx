@@ -10,21 +10,19 @@ import Leaderboard from '../../components/Leaderboard';
 import { submitScore } from '../../lib/leaderboard';
 import { requestPayment } from '../../lib/solana';
 
-// Game Constants
-const INITIAL_DURATION = 1200; // Start with 1.2 seconds to tap
-const MIN_DURATION = 350; // Cap speed at 350ms (extremely fast)
-const SPEED_INCREMENT = 80; // Milliseconds faster per tap
+const INITIAL_DURATION = 1200;
+const MIN_DURATION = 350;
+const SPEED_INCREMENT = 80;
 const TARGET_SIZE = 80;
 
-// Colors
 const DARK_BG = '#000000';
 const DEEP_BG = '#101012';
-const ZONE_ACTIVE = '#14F195'; // Solana Green
+const ZONE_ACTIVE = '#14F195';
 const ZONE_FAIL = '#FF3B30';
 const SOLANA_PURPLE = '#9945FF';
 
 const { width, height } = Dimensions.get('window');
-// Calculate safe bounds for random placement (avoiding header/footer)
+
 const MIN_Y = 150;
 const MAX_Y = height - 200;
 const MIN_X = 20;
@@ -38,14 +36,11 @@ export default function SpeedRunGame() {
     const [streak, setStreak] = useState(0);
     const [currentDuration, setCurrentDuration] = useState(INITIAL_DURATION);
 
-    // Target Position
     const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
 
-    // Timer refs
     const timerRef = useRef<number | null>(null);
-    const gameStartRef = useRef<number>(0); // To track total survival time if needed
+    const gameStartRef = useRef<number>(0);
 
-    // Animation for "Tap Prompt"
     const pulseOpacity = useSharedValue(1);
 
     React.useEffect(() => {
@@ -63,11 +58,9 @@ export default function SpeedRunGame() {
         opacity: pulseOpacity.value,
     }));
 
-    // Leaderboard State
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [paymentProcessing, setPaymentProcessing] = useState(false);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => stopGame();
     }, []);
@@ -85,22 +78,18 @@ export default function SpeedRunGame() {
     };
 
     const spawnTarget = (duration: number) => {
-        // Stop previous timer
         if (timerRef.current) clearTimeout(timerRef.current);
 
-        // Randomize position
         const x = Math.floor(Math.random() * (MAX_X - MIN_X + 1)) + MIN_X;
         const y = Math.floor(Math.random() * (MAX_Y - MIN_Y + 1)) + MIN_Y;
         setTargetPos({ x, y });
 
-        // Start Timer for this round using the PASSED duration (sync)
         timerRef.current = setTimeout(() => {
             handleTimeout();
         }, duration) as unknown as number;
     };
 
     const handleTimeout = () => {
-        // Target disappeared before tap -> Game Over
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setGameState('result');
     };
@@ -108,23 +97,18 @@ export default function SpeedRunGame() {
     const handleTap = () => {
         if (gameState !== 'playing') return;
 
-        // Success!
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const newStreak = streak + 1;
         setStreak(newStreak);
 
-        // Calculate new duration (Exponential Decay for smooth flow)
-        // 5% faster each tap feels much fairer than linear subtraction
         const nextDuration = Math.max(MIN_DURATION, Math.floor(currentDuration * 0.95));
         setCurrentDuration(nextDuration);
 
-        // Respawn immediately with NEW duration
         spawnTarget(nextDuration);
     };
 
     const handleBackgroundTap = () => {
         if (gameState !== 'playing') return;
-        // Missed the target -> Game Over
         stopGame();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setGameState('result');
@@ -170,7 +154,6 @@ export default function SpeedRunGame() {
             <StatusBar style="light" />
 
             <SafeAreaView style={styles.safeArea}>
-                {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="white" />
@@ -183,16 +166,13 @@ export default function SpeedRunGame() {
                     )}
                 </View>
 
-                {/* Game Area */}
                 {gameState === 'playing' && (
                     <View style={styles.gameArea}>
-                        {/* Background Layer: Miss Detection */}
                         <Pressable
                             style={styles.backgroundLayer}
                             onPress={handleBackgroundTap}
                         />
 
-                        {/* Target Layer: Success Detection */}
                         <TouchableOpacity
                             style={[
                                 styles.target,
@@ -204,14 +184,12 @@ export default function SpeedRunGame() {
                             <View style={styles.innerTarget} />
                         </TouchableOpacity>
 
-                        {/* Streak Counter (Visual Only) */}
                         <Text style={styles.bgStreak} pointerEvents="none">
                             {streak}
                         </Text>
                     </View>
                 )}
 
-                {/* Intro Screen */}
                 {gameState === 'intro' && (
                     <Pressable style={styles.fullScreenPressable} onPress={startGame}>
                         <View style={styles.centerContent}>
@@ -228,7 +206,6 @@ export default function SpeedRunGame() {
                     </Pressable>
                 )}
 
-                {/* Result Screen */}
                 {gameState === 'result' && (
                     <Pressable style={styles.fullScreenPressable} onPress={startGame}>
                         <View style={styles.centerContent}>
@@ -241,7 +218,6 @@ export default function SpeedRunGame() {
                 )}
             </SafeAreaView>
 
-            {/* UI Overlays (Result Actions) */}
             <SafeAreaView pointerEvents="box-none" style={styles.overlayContainer}>
                 {gameState === 'result' && (
                     <View style={styles.bottomActions} pointerEvents="box-none">

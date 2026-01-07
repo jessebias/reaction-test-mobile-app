@@ -13,12 +13,11 @@ type GameState = 'idle' | 'waiting' | 'go' | 'fail' | 'result';
 
 const { width } = Dimensions.get('window');
 
-// Solana Brand Colors
 const SOLANA_GREEN = '#14F195';
 const SOLANA_PURPLE = '#9945FF';
 const DARK_BG = '#000000';
 const DEEP_BG = '#101012';
-const NEON_RED = '#FF3B30'; // Sleek red for fail state
+const NEON_RED = '#FF3B30';
 
 const TITLE_SIZE = width * 0.14;
 
@@ -29,7 +28,6 @@ export default function ReactionGame() {
     const [timerId, setTimerId] = useState<NodeJS.Timeout | number | null>(null);
     const goTimeRef = useRef<number>(0);
 
-    // Animation for "Tap Prompt"
     const pulseOpacity = useSharedValue(1);
 
     React.useEffect(() => {
@@ -50,19 +48,14 @@ export default function ReactionGame() {
     const getGradientColors = (): [string, string, ...string[]] => {
         switch (gameState) {
             case 'idle':
-                // Sleek dark gradient
                 return [DEEP_BG, DARK_BG];
             case 'waiting':
-                // Deep purple hue indicating anticipation
                 return ['#1e0a33', '#000000'];
             case 'go':
-                // Flashy Solana Green
                 return [SOLANA_GREEN, '#14F195'];
             case 'fail':
-                // Error state
                 return [NEON_RED, '#8a0000'];
             case 'result':
-                // The Signature Solana Gradient
                 return [SOLANA_PURPLE, SOLANA_GREEN];
             default:
                 return [DEEP_BG, DARK_BG];
@@ -96,7 +89,6 @@ export default function ReactionGame() {
         return 'PAPER HANDS';
     };
 
-    // Text color logic: Black on Green (Go), White on others
     const getTextColor = () => (gameState === 'go' ? 'black' : 'white');
 
     const startGame = () => {
@@ -145,22 +137,18 @@ export default function ReactionGame() {
         if (paymentProcessing) return;
         setPaymentProcessing(true);
         try {
-            // Request Payment & Verify on-chain
             const result = await requestPayment();
 
             if (result.verified) {
-                // Submit proven score to Leaderboard
                 await submitScore(resultMs, result.wallet, result.signature, 'reaction_test');
-                // Leaderboard is now only on home screen, so we just acknowledge success
                 alert("Score Submitted Successfully!");
-                router.back(); // Optional: go back to menu? No, let them retry.
+                router.back();
             }
         } catch (error: any) {
             console.error("Score Submission Error:", error);
             if (error.cause) {
                 console.error("Error Cause:", error.cause);
             }
-            // Inform user of failure
             alert("Payment failed or timed out. Please try again.");
         } finally {
             setPaymentProcessing(false);
@@ -171,14 +159,12 @@ export default function ReactionGame() {
         <View style={styles.container}>
             <StatusBar style={gameState === 'go' ? 'dark' : 'light'} />
 
-            {/* Back Button */}
             <SafeAreaView style={styles.backButtonContainer} pointerEvents="box-none">
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="white" />
                 </TouchableOpacity>
             </SafeAreaView>
 
-            {/* Main Game Touch Area */}
             <Pressable style={StyleSheet.absoluteFill} onPress={handlePress}>
                 <LinearGradient
                     colors={getGradientColors()}
@@ -212,8 +198,6 @@ export default function ReactionGame() {
                                 >
                                     TAP TO RETRY
                                 </Animated.Text>
-
-                                {/* Submit Score Button - Needs to stop propagation if pressing specific button */}
                             </View>
                         )}
                     </View>
@@ -231,7 +215,6 @@ export default function ReactionGame() {
                 </LinearGradient>
             </Pressable>
 
-            {/* UI Overlays */}
             <SafeAreaView pointerEvents="box-none" style={styles.overlayContainer}>
                 {gameState === 'result' && (
                     <View style={styles.bottomActions} pointerEvents="box-none">
@@ -257,8 +240,6 @@ export default function ReactionGame() {
                     </View>
                 )}
             </SafeAreaView>
-
-            {/* Leaderboard only accessible from home now */}
         </View>
     );
 }
@@ -332,7 +313,6 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
     },
-    // Overlay styles
     overlayContainer: {
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'space-between',
@@ -355,7 +335,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'flex-end',
         alignItems: 'center',
-        marginBottom: 80, // Space specifically for the button in result screen
+        marginBottom: 80,
     },
     submitBtn: {
         backgroundColor: 'white',
